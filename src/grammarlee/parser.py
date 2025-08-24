@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import importlib.resources as pkgres
 import re
-from typing import List, Tuple, Iterable, Any
+from typing import List, Tuple
 
 from lark import Lark, Transformer, v_args, UnexpectedInput
 from .models import Action, BackmatterEdit, InlineAnchor, ParseResult
-
 
 # -------------------------
 # Config & patterns
@@ -16,7 +15,7 @@ VALID_CATEGORIES = {
     "GRAMMAR", "SPELLING", "PUNCTUATION", "STYLE", "CLARITY", "WORD", "WORDINESS"
 }
 
-# Delimiter: tolerate leading/trailing spaces on the line
+# Delimiter tolerant to surrounding spaces
 DELIM_RE = re.compile(r"^\s*--- BACKMATTER ---\s*$", flags=re.MULTILINE)
 
 # Inline anchors:
@@ -35,25 +34,30 @@ INLINE_TOKEN_RE = re.compile(
     re.VERBOSE,
 )
 
+def _unescape_minimal(s: str) -> str:
+    """Minimal unescape used for back-matter quoted strings and inline render."""
+    return (s.replace(r"\\", "\\")
+             .replace(r"\"", "\"")
+             .replace(r"\'", "'")
+             .replace(r"\n", "\n")
+             .replace(r"\r", "\r")
+             .replace(r"\t", "\t"))
 
 # -------------------------
-# Helpers
+# Grammar loading
 # -------------------------
 
 def _load_lark_grammar() -> str:
     with pkgres.files("grammarlee.grammar").joinpath("backmatter.lalr").open("r", encoding="utf-8") as f:
         return f.read()
 
+# -------------------------
+# Transformer
+# -------------------------
 
-@v_args(inline=True)  # Apply to all methods in this class (see docs) :contentReference[oaicite:2]{index=2}
+@v_args(inline=True)
 class _BackmatterTransformer(Transformer):
-    """Transform back-matter into simple Python types.
-
-    IDs/ACTIONS arrive as Tokens; quoted/category/comment are transformed into Python strings.
-    """
-
     def lines(self, *items):
-        # items are the results of `line`, already transformed
         return list(items)
 
     def empty(self):
@@ -61,47 +65,49 @@ class _BackmatterTransformer(Transformer):
 
     # line: [ ID ] ACTION quoted -> quoted category ( comment )
     def line(self, _lb, id_tok, _rb, action_tok, old_q, _arrow, new_q, category_str, _lp, comment_str, _rp):
-        # id_tok/action_tok are Tokens; others are plain strings (already transformed)
         return (int(id_tok.value), action_tok.value, old_q, new_q, category_str, comment_str)
 
+    # quoted: DQSTR | SQSTR  (both arrive as a single Token)
     def quoted(self, token):
-        # token is ESCAPED_STRING like "\"text\"": strip quotes & unescape common sequences
-        s = token.value[1:-1]
-        s = s.encode("utf-8").decode("unicode_escape")
-        return s
+        # Strip surrounding quotes (single or double) and minimally unescape
+        raw = token.value
+        if not raw:
+            return ""
+        s = raw[1:-1]
+        return _unescape_minimal(s)
 
     def category(self, _lb, cat_tok, _rb):
         return cat_tok.value
 
+    # comment: COMMENT_TEXT | -> empty_comment
     def comment(self, token):
-        # Allow "\)" for a literal ')'
         return token.value.replace(r"\)", ")")
 
+    def empty_comment(self):
+        return ""
 
 # -------------------------
 # Public API
 # -------------------------
 
 def split_sections(document: str) -> Tuple[str, str]:
-    """Split into (inline_text, backmatter_text)."""
     parts = DELIM_RE.split(document, maxsplit=1)
     if len(parts) == 2:
         inline_text, backmatter_text = parts
         return inline_text, backmatter_text.lstrip()
     return document, ""
 
-
 def parse_inline_anchors(inline_text: str) -> List[InlineAnchor]:
     anchors: List[InlineAnchor] = []
     for m in INLINE_TOKEN_RE.finditer(inline_text):
-        if m.group("id1") is not None:  # replacement/insert
+        if m.group("id1") is not None:
             anchors.append(InlineAnchor(
                 id=int(m.group("id1")),
                 kind="replace_or_insert",
-                new_text=m.group("new"),
+                new_text=m.group("new"),  # store raw; unescape at render time
                 span=m.span(),
             ))
-        else:  # deletion
+        else:
             anchors.append(InlineAnchor(
                 id=int(m.group("id2")),
                 kind="delete",
@@ -110,21 +116,15 @@ def parse_inline_anchors(inline_text: str) -> List[InlineAnchor]:
             ))
     return anchors
 
-
 def apply_inline(inline_text: str) -> str:
-    """Render final text; strip trailing newline(s) for deterministic tests."""
-
     def _repl(m: re.Match) -> str:
         if m.group("id1") is not None:
-            return m.group("new")
+            return _unescape_minimal(m.group("new"))
         return ""
-
     rendered = INLINE_TOKEN_RE.sub(_repl, inline_text)
     return rendered.rstrip("\r\n")
 
-
 def _parse_backmatter_raw(backmatter_text: str) -> List[tuple]:
-    """Return a list of 6-tuples: (id:int, action:str, old:str, new:str, category:str, comment:str)."""
     grammar = _load_lark_grammar()
     parser = Lark(
         grammar,
@@ -135,21 +135,7 @@ def _parse_backmatter_raw(backmatter_text: str) -> List[tuple]:
         lexer="contextual",
     )
     tree = parser.parse(backmatter_text)
-    result = _BackmatterTransformer().transform(tree)
-
-    # Normalize shape defensively:
-    if isinstance(result, tuple):               # single line case (shouldn't happen with -> lines, but safe)
-        result = [result]
-    elif not isinstance(result, list):
-        result = [result]
-
-    # Filter only proper 6-tuples (robust against any accidental tokens):
-    cleaned: List[tuple] = []
-    for item in result:
-        if isinstance(item, tuple) and len(item) == 6:
-            cleaned.append(item)
-    return cleaned
-
+    return _BackmatterTransformer().transform(tree)
 
 def parse_backmatter(backmatter_text: str) -> List[BackmatterEdit]:
     if not backmatter_text.strip():
@@ -158,10 +144,8 @@ def parse_backmatter(backmatter_text: str) -> List[BackmatterEdit]:
         tuples = _parse_backmatter_raw(backmatter_text)
     except UnexpectedInput:
         return []
-
     edits: List[BackmatterEdit] = []
     for (id_num, action, old, new, category, comment) in tuples:
-        # Validate category & action/text-shape (runtime checks only)
         cat_ok = category in VALID_CATEGORIES
         if action == Action.REPLACE.value:
             consistency_ok = (old != "") and (new != "")
@@ -171,7 +155,6 @@ def parse_backmatter(backmatter_text: str) -> List[BackmatterEdit]:
             consistency_ok = (old != "") and (new == "")
         else:
             consistency_ok = False
-
         edits.append(BackmatterEdit(
             id=id_num,
             action=Action(action),
@@ -183,7 +166,6 @@ def parse_backmatter(backmatter_text: str) -> List[BackmatterEdit]:
             consistency_ok=consistency_ok,
         ))
     return edits
-
 
 def parse_document(document: str) -> ParseResult:
     inline_text, backmatter_text = split_sections(document)

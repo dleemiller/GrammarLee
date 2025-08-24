@@ -20,6 +20,7 @@ grammarlee = ["grammar/*.lalr"]
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.138.2",
     "pytest>=8.4.1",
 ]
 
