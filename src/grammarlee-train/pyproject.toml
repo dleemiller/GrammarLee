@@ -1,0 +1,25 @@
+[project]
+name = "grammarlee-train"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "grammarlee",
+  "trl>=0.21.0",
+]
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[project.scripts]
+grammarlee-train = "main:main"
+
+[tool.uv.sources]
+grammarlee = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
+
