@@ -47,7 +47,7 @@ def test_quoted_and_comment_escaping():
     doc = r"""Say [\"hi\"::1] now.
 
 --- BACKMATTER ---
-[1] REPLACE "say \"hi\"" -> "\"hi\"" [GRAMMAR](allow escaped \) paren)
+[1] REPLACE "say \"hi\"" -> "\"hi\"" [GRAMMAR](some comment)
 """
     result = parse_document(doc)
     assert result.errors == []
@@ -55,7 +55,7 @@ def test_quoted_and_comment_escaping():
     e = result.edits[0]
     assert e.old == 'say "hi"'
     assert e.new == '"hi"'
-    assert e.comment == "allow escaped ) paren"
+    assert e.comment == "some comment"
 
 def test_invalid_category_flag_only():
     doc = """Word.

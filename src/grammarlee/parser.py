@@ -4,7 +4,7 @@ import importlib.resources as pkgres
 import re
 from typing import List, Tuple
 
-from lark import Lark, Transformer, v_args, UnexpectedInput
+from lark import Lark, Transformer, Token, v_args, UnexpectedInput
 from .models import Action, BackmatterEdit, InlineAnchor, ParseResult
 
 # -------------------------
@@ -55,6 +55,7 @@ def _load_lark_grammar() -> str:
 # Transformer
 # -------------------------
 
+
 @v_args(inline=True)
 class _BackmatterTransformer(Transformer):
     def lines(self, *items):
@@ -63,28 +64,39 @@ class _BackmatterTransformer(Transformer):
     def empty(self):
         return []
 
-    # line: [ ID ] ACTION quoted -> quoted category ( comment )
+    # [ ID ] ACTION quoted -> quoted [CATEGORY] ( COMMENT )
     def line(self, _lb, id_tok, _rb, action_tok, old_q, _arrow, new_q, category_str, _lp, comment_str, _rp):
         return (int(id_tok.value), action_tok.value, old_q, new_q, category_str, comment_str)
 
-    # quoted: DQSTR | SQSTR  (both arrive as a single Token)
-    def quoted(self, token):
-        # Strip surrounding quotes (single or double) and minimally unescape
-        raw = token.value
-        if not raw:
-            return ""
-        s = raw[1:-1]
-        return _unescape_minimal(s)
+    def quoted(self, tok: Token):
+        s = tok.value[1:-1]
+        if tok.type == "DQSTR":
+            s = s.replace(r'\"', '"')
+        elif tok.type == "SQSTR":
+            s = s.replace(r"\'", "'")
+    
+        # Common escapes
+        s = (s
+             .replace(r"\\", "\\")
+             .replace(r"\n", "\n")
+             .replace(r"\r", "\r")
+             .replace(r"\t", "\t"))
+        return s
+    
 
-    def category(self, _lb, cat_tok, _rb):
+    # [CATEGORY] -> return just the inner token's value (no validation here!)
+    def category(self, _lb, cat_tok: Token, _rb):
         return cat_tok.value
 
-    # comment: COMMENT_TEXT | -> empty_comment
-    def comment(self, token):
-        return token.value.replace(r"\)", ")")
+    # COMMENT as concatenation of CCHAR tokens, then unescape '\)' only
+    def comment(self, tok=None):
+        if tok is None:
+            return ""
+        return tok.value.replace(r"\)", ")")
 
     def empty_comment(self):
         return ""
+
 
 # -------------------------
 # Public API
