@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grammarlee"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lark>=1.2.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+grammarlee = ["grammar/*.lalr"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
+
+[project.scripts]
+gl-parse = "grammarlee.parser:main"

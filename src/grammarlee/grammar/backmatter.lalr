@@ -1,0 +1,34 @@
+// Back-matter lines:
+// [ID] ACTION "OLD" -> "NEW" [CATEGORY](COMMENT)
+//
+// Notes:
+// - Ignore all whitespace (including newlines) globally, so we don't have to juggle NL tokens.
+// - `quoted` uses Lark's ESCAPED_STRING.
+// - `comment` allows "\)" for a literal ')'.
+
+start: line+                        -> lines
+     |                               -> empty
+
+line: LBRACK ID RBRACK ACTION quoted ARROW quoted category LPAR comment RPAR
+
+// Terminals
+LBRACK: "["
+RBRACK: "]"
+LPAR: "("
+RPAR: ")"
+ARROW: "->"
+ACTION: "REPLACE" | "INSERT" | "DELETE"
+ID: /[1-9][0-9]*/
+
+category: LBRACK CATEGORY RBRACK
+CATEGORY: /[A-Z]+/
+
+// Everything until the next unescaped ')'
+comment: /([^\\)]|\\.)+/
+
+// Quoted strings with escapes (Lark builtin)
+quoted: ESCAPED_STRING
+
+%import common.ESCAPED_STRING
+%ignore /[ \t\r\n]+/
+
