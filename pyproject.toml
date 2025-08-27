@@ -9,7 +9,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "lark>=1.2.2",
+    "dspy>=3.0.2",
 ]
 
 [tool.setuptools.packages.find]
@@ -23,7 +23,6 @@ members = [".", "src/grammarlee-train"]
 
 [dependency-groups]
 dev = [
-    "hypothesis>=6.138.2",
     "pytest>=8.4.1",
 ]
 
