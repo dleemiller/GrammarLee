@@ -3,10 +3,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Tuple
 
-class Action(str, Enum):
-    REPLACE = "REPLACE"
-    INSERT = "INSERT"
-    DELETE = "DELETE"
 
 @dataclass
 class InlineAnchor:
@@ -16,17 +12,13 @@ class InlineAnchor:
     new_text: str             # for replace/insert; "" for delete
     span: Tuple[int, int]     # (start, end) indices in the raw inline block
 
-@dataclass
-class BackmatterEdit:
-    """One normalized back-matter edit line."""
+class Edit(BaseModel):
+    """One normalized edit line."""
     id: int
-    action: Action
     old: str
     new: str
     category: str
     comment: str
-    is_valid_category: bool = True
-    consistency_ok: bool = True
 
 @dataclass
 class ParseResult:
@@ -35,6 +27,6 @@ class ParseResult:
     backmatter_text: str             # raw backmatter block
     final_text: str                  # inline text with anchors applied/stripped
     anchors: List[InlineAnchor]      # discovered inline anchors
-    edits: List[BackmatterEdit]      # parsed backmatter edits
+    edits: List[Edit]      # parsed backmatter edits
     errors: List[str] = field(default_factory=list)
 

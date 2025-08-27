@@ -1,8 +1,8 @@
-from .models import Action, InlineAnchor, BackmatterEdit, ParseResult
-from .parser import parse_document, parse_backmatter, parse_inline_anchors, apply_inline, split_sections
+from .models import InlineAnchor, Edit, ParseResult
+from .parser import parse_document, parse_inline_anchors, apply_inline
 
 __all__ = [
-    "Action", "InlineAnchor", "BackmatterEdit", "ParseResult",
-    "parse_document", "parse_backmatter", "parse_inline_anchors", "apply_inline", "split_sections",
+    "InlineAnchor", "Edit", "ParseResult",
+    "parse_document", "parse_inline_anchors", "apply_inline",
 ]
 
