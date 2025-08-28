@@ -8,13 +8,20 @@ class GrammarLeeJudge(dspy.Signature):
     edited_text: str = dspy.InputField()
     edit_level: Literal["light", "medium", "heavy"] = dspy.InputField()
 
-    is_grammar_correct: bool = dspy.OutputField(desc="Is the final text grammatically correct?")
-    retains_original_meaning: bool = dspy.OutputField(desc="Does the edited text retain the original meaning?")
-    introduced_artifacts: bool = dspy.OutputField(desc="Did editing cause artifacts? (eg. double spaces, brackets)")
+    is_grammar_correct: bool = dspy.OutputField(
+        desc="Is the final text grammatically correct?"
+    )
+    retains_original_meaning: bool = dspy.OutputField(
+        desc="Does the edited text retain the original meaning?"
+    )
+    introduced_artifacts: bool = dspy.OutputField(
+        desc="Did editing cause artifacts? (eg. double spaces, brackets)"
+    )
 
     edit_precision: Literal["low", "medium", "high"] = dspy.OutputField()
     edit_recall: Literal["low", "medium", "high"] = dspy.OutputField()
     level_adherance: Literal["low", "medium", "high"] = dspy.OutputField()
+
 
 GrammarLeeJudge.__doc__ = """
 Your job is to evaluate how well an editor did at editing text.
@@ -42,4 +49,3 @@ Level Adherance:
     `medium` means that the amount of editing was slightly over or under requested
     `high` means that the requested level was followed well
 """
-    

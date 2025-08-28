@@ -20,21 +20,18 @@ judge_lm = dspy.LM(JUDGE_MODEL_ID, api_key=os.environ["APIKEY"], temperature=0.0
 judge = dspy.Predict(GrammarLeeJudge)
 judge.set_lm(judge_lm)
 
+
 def main(edit_level: Literal["light", "medium", "heavy"] = "heavy"):
     text = "Da studnet are bored"
-    pred = editor(
-        text=text,
-        edit_level=edit_level
-    )
-    
-    result = parse_document(pred)
+    pred = editor(text=text, edit_level=edit_level)
+
+    result = parse_document(pred, text)
     _eval = judge(
-        original_text = text,
-        edited_text=result.final_text,
-        edit_level=edit_level
+        original_text=text, edited_text=result.final_text, edit_level=edit_level
     )
     print(result)
     print(_eval)
+
 
 if __name__ == "__main__":
     main(edit_level="medium")

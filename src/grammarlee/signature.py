@@ -5,13 +5,25 @@ from typing import Literal, List
 from .models import Edit
 
 
-VALID_CATEGORIES = ["GRAMMAR", "SPELLING", "PUNCTUATION", "STYLE", "CLARITY", "WORD", "WORDINESS"]
+VALID_CATEGORIES = [
+    "GRAMMAR",
+    "SPELLING",
+    "PUNCTUATION",
+    "STYLE",
+    "CLARITY",
+    "WORD",
+    "WORDINESS",
+]
+
 
 class GrammarLeeSignature(dspy.Signature):
     text: str = dspy.InputField(desc="Text to correct")
-    edit_level: Literal["light", "medium", "heavy"] = dspy.InputField(desc="The requested edit level")
+    edit_level: Literal["light", "medium", "heavy"] = dspy.InputField(
+        desc="The requested edit level"
+    )
     edited_text: str = dspy.OutputField(desc="Edited text with inline anchors.")
     edits: List[Edit] = dspy.OutputField(desc="Edit operations. IDs matched to anchors")
+
 
 GrammarLeeSignature.__doc__ = """
 You are a professional editor. Your job is to edit the provided text.
