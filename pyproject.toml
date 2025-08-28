@@ -25,6 +25,9 @@ members = [".", "src/grammarlee-train"]
 dev = [
     "pytest>=8.4.1",
 ]
+train = [
+    "datasets>=4.0.0",
+]
 
 [project.scripts]
 gl-parse = "grammarlee.parser:main"

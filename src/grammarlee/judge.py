@@ -1,3 +1,5 @@
+from typing import Literal
+
 import dspy
 
 
@@ -7,7 +9,7 @@ class GrammarLeeJudge(dspy.Signature):
     edit_level: Literal["light", "medium", "heavy"] = dspy.InputField()
 
     is_grammar_correct: bool = dspy.OutputField(desc="Is the final text grammatically correct?")
-    is_style_consistent: bool = dspy.OutputField(desc="Does the editing maintain original style?")
+    retains_original_meaning: bool = dspy.OutputField(desc="Does the edited text retain the original meaning?")
     introduced_artifacts: bool = dspy.OutputField(desc="Did editing cause artifacts? (eg. double spaces, brackets)")
 
     edit_precision: Literal["low", "medium", "high"] = dspy.OutputField()
@@ -18,7 +20,7 @@ GrammarLeeJudge.__doc__ = """
 Your job is to evaluate how well an editor did at editing text.
 
 The edited text -- above all -- must be grammatically correct. Secondarily, it should follow the style of
-the original text (grammatical errors, lack of clarity, wordiness, spelling, etc are not considered stylistic).
+the original text (grammatical errors, lack of clarity, wordiness, spelling, etc are NOT considered stylistic).
 
 Edit precision:
     `low` means there is a grammar error added by an edit, or 2 or more edits that could be meaningfully improved
