@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 20px auto; 
+            padding: 20px; 
+        }
+        .change.insert { background-color: #c8e6c9; }
+        .change.delete { background-color: #ffcdd2; text-decoration: line-through; }
+        .change.replace { background-color: #fff3e0; }
+        .change { padding: 2px; margin: 1px; cursor: pointer; }
+        .change:hover { opacity: 0.8; }
+        .controls { margin: 20px 0; }
+        .btn { 
+            padding: 8px 16px; 
+            margin: 5px; 
+            border: 1px solid #ccc; 
+            background: #f5f5f5; 
+            cursor: pointer; 
+        }
+        .btn:hover { background: #e0e0e0; }
+        .stats { color: #666; font-size: 14px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>{{ title }}</h1>
+    
+    <div class="stats">{{ changes_count }} changes detected</div>
+    
+    <div class="controls">
+        <button class="btn" onclick="acceptAll()">Accept All</button>
+        <button class="btn" onclick="rejectAll()">Reject All</button>
+        <button class="btn" onclick="exportDecisions()">Export JSON</button>
+    </div>
+    
+    <div id="text-content">
+        {{ text_with_changes|safe }}
+    </div>
+
+    <script>
+        const decisions = {};
+        const changes = {{ session_data.changes|tojson|safe }};
+        
+        function toggleChange(changeId, decision) {
+            decisions[changeId] = decisions[changeId] === decision ? null : decision;
+            updateUI();
+        }
+        
+        function updateUI() {
+            changes.forEach(change => {
+                const el = document.getElementById(`text-${change.id}`);
+                if (!el) return;
+                
+                el.style.opacity = decisions[change.id] === 'reject' ? '0.3' : '1';
+                el.style.fontWeight = decisions[change.id] === 'accept' ? 'bold' : 'normal';
+            });
+        }
+        
+        function acceptAll() {
+            changes.forEach(change => decisions[change.id] = 'accept');
+            updateUI();
+        }
+        
+        function rejectAll() {
+            changes.forEach(change => decisions[change.id] = 'reject');
+            updateUI();
+        }
+        
+        function exportDecisions() {
+            const data = { decisions, timestamp: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'decisions.json';
+            a.click();
+        }
+    </script>
+</body>
+</html>

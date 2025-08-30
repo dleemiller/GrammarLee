@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f8f9fa;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+        .text-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        .changes-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .change {
+            position: relative;
+            cursor: pointer;
+            border-radius: 3px;
+            padding: 2px 4px;
+            margin: 0 2px;
+        }
+        .change.insert {
+            background-color: #d4edda;
+            border-bottom: 2px solid #28a745;
+        }
+        .change.delete {
+            background-color: #f8d7da;
+            text-decoration: line-through;
+            border-bottom: 2px solid #dc3545;
+        }
+        .change.replace {
+            background-color: #fff3cd;
+            border-bottom: 2px solid #ffc107;
+        }
+        .change.accepted {
+            background-color: #d1ecf1 !important;
+            border-bottom-color: #17a2b8 !important;
+        }
+        .change.rejected {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+        .change-item {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+        .change-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .change-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .change-type {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .change-type.insert { background: #d4edda; color: #155724; }
+        .change-type.delete { background: #f8d7da; color: #721c24; }
+        .change-type.replace { background: #fff3cd; color: #856404; }
+        .change-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .btn.accept {
+            background: #28a745;
+            color: white;
+        }
+        .btn.reject {
+            background: #dc3545;
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .change-text {
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .original { color: #dc3545; }
+        .revised { color: #28a745; }
+        .annotation {
+            background: #f1f3f4;
+            padding: 8px;
+            border-radius: 4px;
+            font-style: italic;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .actions {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .actions .btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            margin: 0 8px;
+        }
+        h1 { color: #495057; text-align: center; }
+        h2 { color: #6c757d; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>{{ title }}</h1>
+    
+    <div class="container">
+        <div class="text-panel">
+            <h2>Text with Changes</h2>
+            <div id="text-content">
+                {{ text_with_changes|safe }}
+            </div>
+        </div>
+        
+        <div class="changes-panel">
+            <h2>Changes ({{ changes_count }})</h2>
+            <div id="changes-list">
+                {{ changes_list_html|safe }}
+            </div>
+            
+            <div class="actions">
+                <button class="btn accept" onclick="acceptAll()">Accept All</button>
+                <button class="btn reject" onclick="rejectAll()">Reject All</button>
+                <button class="btn" onclick="exportDecisions()" style="background: #6c757d; color: white;">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const decisions = {};
+        const changes = {{ session_data.changes|tojson|safe }};
+        
+        function toggleChange(changeId, decision) {
+            decisions[changeId] = decision;
+            updateUI();
+        }
+        
+        function updateUI() {
+            // Update change items
+            changes.forEach(change => {
+                const item = document.getElementById(`change-${change.id}`);
+                const textChange = document.getElementById(`text-${change.id}`);
+                
+                if (decisions[change.id] === 'accept') {
+                    item.style.backgroundColor = '#d1ecf1';
+                    if (textChange) textChange.classList.add('accepted');
+                } else if (decisions[change.id] === 'reject') {
+                    item.style.backgroundColor = '#f8d7da';
+                    if (textChange) textChange.classList.add('rejected');
+                } else {
+                    item.style.backgroundColor = '';
+                    if (textChange) {
+                        textChange.classList.remove('accepted', 'rejected');
+                    }
+                }
+            });
+        }
+        
+        function acceptAll() {
+            changes.forEach(change => {
+                decisions[change.id] = 'accept';
+            });
+            updateUI();
+        }
+        
+        function rejectAll() {
+            changes.forEach(change => {
+                decisions[change.id] = 'reject';
+            });
+            updateUI();
+        }
+        
+        function exportDecisions() {
+            const data = {
+                decisions: decisions,
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'text_review_decisions.json';
+            a.click();
+        }
+    </script>
+</body>
+</html>
